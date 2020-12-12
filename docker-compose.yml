@@ -1,0 +1,14 @@
+version: "3"
+
+services: 
+  toolchain:
+    build: ./toolchain
+    volumes: 
+      - ./tests:/tests
+
+  simulator:
+    build: ./simulator
+    volumes: 
+      - ./tests:/tests
+    depends_on: 
+      - toolchain
