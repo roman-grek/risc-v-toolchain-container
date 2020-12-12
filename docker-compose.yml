@@ -3,12 +3,14 @@ version: "3"
 services: 
   toolchain:
     build: ./toolchain
+    command: 
+      cp -r /riscv-tests/ /tests
     volumes: 
-      - ./tests:/tests
+      - ./tests:/tests:rw
 
   simulator:
     build: ./simulator
     volumes: 
-      - ./tests:/tests
+      - ./tests:/tests:rw
     depends_on: 
       - toolchain

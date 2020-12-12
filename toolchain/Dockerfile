@@ -1,19 +1,17 @@
 FROM ubuntu:20.04 AS builder
 
-ENV RISCV_ARCH="rv64imac"
-
 # The install-prefix for executable files
 ENV RISCV="/opt/riscv"
-RUN set -eux; \
-    mkdir -p "${RISCV}";
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN mkdir -p "${RISCV}"
 
 # Install system packages
-RUN set -eux; \
-    apt-get update; \
+RUN apt-get update; \
     apt-get upgrade --assume-yes; \
-    \
 # for dependencies
-    apt-get install --assume-yes --no-install-recommends \
+    apt-get install --assume-yes \
         autoconf \
         automake \
         autotools-dev \
@@ -32,38 +30,36 @@ RUN set -eux; \
         bc \
         zlib1g-dev \
         libexpat-dev \
-# for tools
         git \
         ca-certificates
 
-# Fetch source code of riscv gnu toolchain
-RUN set -eux; \
-    mkdir -p /usr/src ; \
-    cd /usr/src ; \
-    git clone --recursive https://github.com/riscv/riscv-gnu-toolchain
+WORKDIR ${RISCV}
+RUN git clone --recursive https://github.com/riscv/riscv-gnu-toolchain ; \
+    git checkout "${RISCV_COMMIT}"
 
 # Compile
-RUN set -eux; \
-    cd /usr/src/riscv-gnu-toolchain; \
-    export CFLAGS_FOR_TARGET_EXTRA="-Os -D__riscv_soft_float -D__riscv_float_abi_soft" \
-    export MAKEFLAGS="-j$(($(nproc)+1))"; \
-    ./configure --prefix="${RISCV}" --with-arch="${RISCV_ARCH}"; \
-    make;
+RUN cd riscv-gnu-toolchain ; \
+    ./configure --prefix="${RISCV}" --with-arch="${RISCV_ARCH}" "${RISCV_ARGS}"; \
+    make
+
+# Delete source code
+RUN rm -rf riscv-gnu-toolchain
+
 
 FROM ubuntu:20.04
 
-COPY --from=builder "/opt/riscv" "/opt/riscv"
-
 ENV RISCV="/opt/riscv"
+COPY --from=builder "${RISCV}" "${RISCV}"
+
 ENV PATH="${PATH}:${RISCV}/bin"
 
+ARG DEBIAN_FRONTEND=noninteractive
+
 # Install system packages
-RUN set -eux; \
-    apt-get update; \
+RUN apt-get update; \
     apt-get upgrade --assume-yes; \
-    \
 # for dependencies
-    apt-get install --assume-yes --no-install-recommends \
+    apt-get install --assume-yes \
         autoconf \
         automake \
         autotools-dev \
@@ -82,14 +78,19 @@ RUN set -eux; \
         bc \
         zlib1g-dev \
         libexpat-dev \
-        ; \
-    \
-    apt-get clean; \
-    rm -rf /var/lib/apt/lists/*;
+        git
 
-RUN set -eux; \
-    mkdir -p /work; \
-    chmod 777 /work;
+WORKDIR /
 
-WORKDIR /work
+RUN git clone --recursive https://github.com/riscv/riscv-tests
+
+RUN cd riscv-tests ; autoconf && ./configure --prefix="${RISCV}/target"
+
+# Patch and build tests
+COPY patch.txt /riscv-tests
+RUN cd riscv-tests ; git apply patch.txt && make && make install
+
+# Copy tests binaries to volume
+RUN cp -r /riscv-tests/benchmarks /tests && cp -r /riscv-tests/isa /tests
+
 CMD ["riscv64-unknown-elf-gcc", "--version"]

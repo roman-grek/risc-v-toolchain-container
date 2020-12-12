@@ -2,6 +2,7 @@ FROM ubuntu:20.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 
+# Install dependencies
 RUN apt-get update; \
     apt-get install --assume-yes \
     ninja-build \
@@ -14,10 +15,12 @@ RUN apt-get update; \
 
 RUN git clone --recursive https://github.com/MIPT-ILab/mipt-mips.git
 
+# Configure gcc v10 and g++ v10
 RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 100 --slave /usr/bin/g++ g++ /usr/bin/g++-10 --slave /usr/bin/gcov gcov /usr/bin/gcov-10
 
 RUN mkdir build
 WORKDIR /build
+
 RUN cmake /mipt-mips/simulator -G "Ninja" ; \
     ninja
 
