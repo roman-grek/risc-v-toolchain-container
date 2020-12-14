@@ -3,8 +3,9 @@ version: "3"
 services: 
   toolchain:
     build: ./toolchain
-    command: 
-      cp -r /riscv-tests/ /tests
+    # command: 
+    #   cp -r /riscv-tests/benchmarks /tests
+    #   cp -r /riscv-tests/isa /tests
     volumes: 
       - ./tests:/tests:rw
 
